@@ -3,24 +3,31 @@ package jls
 import java.util.*
 
 open class CircuitElement constructor(
+    name: String,
     inputs: Array<CircuitElementInput>?,
     outputs: Array<CircuitElementOutput>?,
     propagationTime: Int
 ) {
+    val name = name
     protected val inputs = inputs
     protected val outputs = outputs
-    val propagationTime = propagationTime
+    private val propagationTime = propagationTime
     private var ticksSinceInputChanged: Int = propagationTime
+    private var inputSet: Boolean = false
 
 
-    fun tick() {
+    fun beginTick() {
         println("tick, ticks since last, prop time: $ticksSinceInputChanged, $propagationTime")
-        if (ticksSinceInputChanged < propagationTime) {
-            if (ticksSinceInputChanged == propagationTime - 1) {
+        if (ticksSinceInputChanged < propagationTime && !inputSet) {
+            ++ticksSinceInputChanged
+            if (ticksSinceInputChanged == propagationTime) {
                 propagate()
             }
-            ++ticksSinceInputChanged
         }
+    }
+
+    fun endTick(){
+        inputSet = false
     }
 
     fun assignInputToOutput(outputNum: Int, wireNum: Int, address: InputAddress) {
@@ -34,6 +41,7 @@ open class CircuitElement constructor(
     fun setInputBit(inputNum: Int, wireNum: Int, value: Boolean) {
         inputs?.get(inputNum)?.setInputBit(wireNum, value)
         ticksSinceInputChanged = 0
+        inputSet = true
         if (propagationTime == 0) {
             propagate()
         }
@@ -43,8 +51,9 @@ open class CircuitElement constructor(
 
 }
 
-class Or constructor(numWires: Int, propagationTime: Int) :
+class Or constructor(name: String, numWires: Int, propagationTime: Int) :
     CircuitElement(
+        name,
         Array(2) { CircuitElementInput(numWires) },
         Array(1) { CircuitElementOutput(numWires) },
         propagationTime
@@ -52,6 +61,20 @@ class Or constructor(numWires: Int, propagationTime: Int) :
     override fun propagate() {
         val outBits = inputs!![0].bits.clone() as BitSet
         outBits.or(inputs!![1].bits)
+        outputs!![0]!!.setBits(outBits)
+    }
+}
+
+class And constructor(name: String, numWires: Int, propagationTime: Int) :
+    CircuitElement(
+        name,
+        Array(2) { CircuitElementInput(numWires) },
+        Array(1) { CircuitElementOutput(numWires) },
+        propagationTime
+    ) {
+    override fun propagate() {
+        val outBits = inputs!![0].bits.clone() as BitSet
+        outBits.and(inputs!![1].bits)
         outputs!![0]!!.setBits(outBits)
     }
 }
